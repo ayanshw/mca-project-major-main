@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.6/dist/css/bootstrap.min.css" rel="stylesheet"
+    integrity="sha384-4Q6Gf2aSP4eDXB8Miphtr37CMZZQ5oXLH2yaXMJ2w8e2ZtHTl7GptT4jmndRuHDT" crossorigin="anonymous">
+  <title>Logged in as Verifier/View Offense</title>
+</head>
+
+<body>
+
+  <nav class="navbar navbar-expand-lg navbar-dark bg-secondary">
+    <div class="container-fluid">
+      <a class="navbar-brand" href="#">Vehicle Management System</a>
+      <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#exampleModal">
+        LOGOUT
+      </button>
+    </div>
+  </nav>
+
+  <div class="container mt-5">
+    <div class="card mx-auto shadow" style="max-width: 1000px; min-width: 25vw;">
+      <div class="row g-0 align-items-center">
+        <div class="col-md-5 text-center p-4">
+          <img src="#" class="img-fluid rounded border" alt="Vehicle Image" id="vehicleImage"
+            style="max-height: 400px; min-height: 250px; object-fit: contain; width: 100%;">
+        </div>
+        <div class="col-md-7">
+          <div class="card-body">
+            <h5 class="card-title mb-3" id="vehicleNumber">VEHICLE NUMBER</h5>
+            <h6 class="text-secondary">Camera Details</h6>
+            <ul class="list-group list-group-flush mb-3">
+              <li class="list-group-item px-0 py-1"><strong>Latitude:</strong> <span id="cameraX">X</span></li>
+              <li class="list-group-item px-0 py-1"><strong>Longitude:</strong> <span id="cameraY">Y</span></li>
+              <li class="list-group-item px-0 py-1"><strong>Address:</strong> <span id="cameraZ">Z</span></li>
+              <li class="list-group-item px-0 py-1 d-none" id="cameraArow"><strong>A:</strong> <span id="cameraA">A</span>
+              </li>
+              <li class="list-group-item px-0 py-1 d-none" id="cameraBrow"><strong>B:</strong> <span id="cameraB">B</span>
+              </li>
+            </ul>
+            <h6 class="text-secondary">Offense Details</h6>
+            <ul class="list-group list-group-flush">
+              <li class="list-group-item px-0 py-1"><strong>Type:</strong> <span id="offenseA">A</span></li>
+              <li class="list-group-item px-0 py-1"><strong>Timestamp:</strong> <span id="offenseB">B</span></li>
+              <li class="list-group-item px-0 py-1"><strong>Offense ID:</strong> <span id="offenseC">C</span></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="d-flex justify-content-center gap-2 mt-4">
+      <a href="#" role="button" class="btn btn-dark" onclick="buttonHandler('rejected')">REMOVE FROM REVIEW</a>
+      <a href="#" role="button" class="btn btn-danger" onclick="buttonHandler('approved')">REMOVE OFFENSE</a>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.6/dist/js/bootstrap.bundle.min.js"
+    integrity="sha384-j1CDi7MgGQ12Z7Qab0qlWQ/Qqz24Gc6BM0thvEMVjHnfYGF0rmFCozFSxQBxwHKO"
+    crossorigin="anonymous"></script>
+</body>
+<script>
+  const uid = 1; // Placeholder for user ID, replace with actual user ID logic if needed
+
+  window.addEventListener('DOMContentLoaded', function () {
+    const segments = window.location.pathname.split('/');
+    const id = segments.filter(Boolean).pop(); // removes empty segments and gets the last one
+    // Only proceed if id looks like a valid review id (e.g., all digits, or adjust as needed)
+    if (!id || !/^\d+$/.test(id)) {
+      console.error('Invalid or missing review id in URL');
+      uid=id; // Set uid to id if it's valid
+      return;
+    }
+    const uri = `/verification/review/${id}`;
+    console.log(uri); // Endpoint to fetch offense details
+    fetch(uri)
+      .then(response => {
+        if (response.status === 200) {
+          return response.json();
+        } else {
+          throw new Error('Network response was not ok');
+        }
+      })
+      .then(data => {
+        console.log(data);
+        // Populate the HTML with the offense details
+        if (data.offense.image) {
+          document.getElementById('vehicleImage').src = `data:image/jpeg;base64,${data.offense.image}`;
+        } else {
+          document.getElementById('vehicleImage').src = '#';
+        }
+        document.getElementById('vehicleNumber').innerText = `${data.offense.vehicleNumber} with review id: ${data.reviewNumber}` || 'Unknown';
+        document.getElementById('cameraX').innerText = data.offense.cameraData.latitude || 'Unknown';
+        document.getElementById('cameraY').innerText = data.offense.cameraData.longitude || 'Unknown';
+        document.getElementById('cameraZ').innerText = data.offense.cameraData.address || 'Unknown';
+        // Hide cameraA and cameraB rows if not present
+        if (data.offense.cameraData.a) {
+          document.getElementById('cameraA').innerText = data.offense.cameraData.a;
+          document.getElementById('cameraArow').classList.remove('d-none');
+        }
+        if (data.offense.cameraData.b) {
+          document.getElementById('cameraB').innerText = data.offense.cameraData.b;
+          document.getElementById('cameraBrow').classList.remove('d-none');
+        }
+        document.getElementById('offenseA').innerText = data.offenseType || 'Unknown';
+        document.getElementById('offenseB').innerText = data.timestamp || 'Unknown';
+        document.getElementById('offenseC').innerText = data.offense.offenseId || 'Unknown';
+      })
+      .catch(error => {
+        console.error('Error fetching offense details:', error);
+      });
+  });
+
+  function buttonHandler(type){
+    if(type!="approved" && type!="rejected"){
+      alert("Invalid button type");
+      return;
+    }
+    let message=prompt("Comment for the review (optional):");
+    if(message===null){
+      message="";
+    }
+    const uri = `/verification/reviewmodify`;
+    const data = {
+      reviewNumber: uid,
+      reviewStatus: type,
+      reviewComments: message
+    };
+    fetch(uri, {
+      method: 'POST',
+      credentials: 'include',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(data)
+    }).then(response => {
+      if (response.status === 200) {
+        alert('Review modified successfully');
+        window.location.href = '/dashboard/'; // Redirect to the review page after successful modification
+      } else {
+        alert('There was an error modifying the review. Please try again.');
+      }
+    });
+  }
+
+</script>
+
+<script>
+  function logouthandler() {
+    // Logic to handle logout
+    uri = '/logout'; // Redirect to logout endpoint
+    fetch(uri, {
+      method: 'POST',
+      credentials: 'include', // Include cookies for session management
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    }).then(response => {
+      if (response.status === 200) {
+        alert('Logout successful');
+        window.location.href = '/'; // Redirect to login page on successful logout
+      }
+    });
+  }
+</script>
+
+</html>

@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.6/dist/css/bootstrap.min.css" rel="stylesheet"
+    integrity="sha384-4Q6Gf2aSP4eDXB8Miphtr37CMZZQ5oXLH2yaXMJ2w8e2ZtHTl7GptT4jmndRuHDT" crossorigin="anonymous">
+  <title>Logged in as Deployer/Show Cameras</title>
+</head>
+
+<body>
+  <nav class="navbar bg-primary">
+    <div class="container-fluid">
+      <a class="navbar-brand text-light" href="/">Vehicle Management System</a>
+
+
+      <button type="button" class="btn btn-danger" onclick="logouthandler()">
+        LOGOUT
+      </button>
+    </div>
+  </nav>
+  <div class="container d-flex justify-content-around mt-3" id="cameraListShow">
+    <div class="container col me-3 d-flex flex-column align-items-center" id="camera"
+      style="height: auto; width: 600px;">
+      <img id="cameraImage" src="#" alt="Camera View"
+        style="max-width: 100%; max-height: 100%; object-fit: contain;">
+    </div>
+    <div class="container col p-0" id="initMap" style="height: 300px; width: 400px; background-color: lightcoral;">
+      <!-- Google Map will render here -->
+    </div>
+  </div>
+  <div class="container mt-4">
+    <div class="row">
+      <!-- Camera Add Form -->
+      <form id="addCameraForm" class="col-6">
+        <div class="mb-3">
+          <label for="addressInput" class="form-label">Camera Address</label>
+          <input type="text" class="form-control" id="addressInput" name="address"  required>
+        </div>
+        <div class="mb-3">
+          <label for="latitudeInput" class="form-label">Latitude</label>
+          <input type="text" class="form-control" id="latitudeInput" name="latitude" disabled readonly required>
+        </div>
+        <div class="mb-3">
+          <label for="longitudeInput" class="form-label">Longitude</label>
+          <input type="text" class="form-control" id="longitudeInput" name="longitude" disabled readonly required>
+        </div>
+        <button type="button" class="btn btn-primary" onclick="cameraAddFunc()">Add Camera</button>
+      </form>
+    </div>
+  </div>
+
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.6/dist/js/bootstrap.bundle.min.js"
+    integrity="sha384-j1CDi7MgGQ12Z7Qab0qlWQ/Qqz24Gc6BM0thvEMVjHnfYGF0rmFCozFSxQBxwHKO"
+    crossorigin="anonymous"></script>
+
+
+
+  <script>
+    let macaddress = '';
+    let uid = '';
+    function datafetch() {
+      // Logic to fetch camera data from the server
+      // This is a placeholder function, replace with actual data fetching logic
+      // console.log("Fetching camera data...");
+
+      const segments = window.location.pathname.split('/');
+      const id = segments.filter(Boolean).pop();
+      // removes empty segments and gets the last one
+      // Only proceed if id looks like a valid review id (e.g., all digits, or adjust as needed)
+     // Replace with your actual endpoint
+      const params = new URLSearchParams(window.location.search);
+      if (params.has('mac')) {
+        macaddress = String(params.get('mac')).trim();
+      }
+      if(params.has('uid')) {
+        websocket(macaddress);
+        uid = params.get('uid');
+        console.log("UID:", uid);
+        console.log("MAC Address:", macaddress);
+      }
+    }
+
+    // Replace with your actual coordinates and camera info
+    const cameraImageUrl = "your-image.jpg"; // Set dynamically if needed
+    const latitude = 28.6139;
+    const longitude = 77.2090;
+
+    // Variables to store marker and map
+    let map, marker;
+
+    // Google Maps API initialization
+    async function initMap() {
+      // Try to get lat/lng from form fields
+      let lat = parseFloat(document.getElementById("latitudeInput")?.value);
+      let lng = parseFloat(document.getElementById("longitudeInput")?.value);
+      let hasLocation = !isNaN(lat) && !isNaN(lng);
+
+      // Default location if not set
+      const defaultLocation = { lat: 28.6139, lng: 77.2090 };
+
+      // Helper to actually initialize the map
+      function renderMap(centerLocation) {
+        map = new google.maps.Map(document.getElementById("initMap"), {
+          zoom: 15,
+          center: centerLocation,
+          mapId: "DEMO_MAP_ID",
+        });
+
+        // If lat/lng present, place marker
+        if (hasLocation) {
+          marker = new google.maps.marker.AdvancedMarkerElement({
+            position: centerLocation,
+            map: map,
+            title: "Selected Location"
+          });
+        }
+
+        // Place marker on map click and update form fields
+        map.addListener("click", (e) => {
+          const lat = e.latLng.lat();
+          const lng = e.latLng.lng();
+          // Place or move AdvancedMarkerElement
+          if (!marker) {
+            marker = new google.maps.marker.AdvancedMarkerElement({
+              position: { lat, lng },
+              map: map,
+              title: "Selected Location"
+            });
+          } else {
+            marker.position = { lat, lng };
+          }
+          // Update form fields
+          document.getElementById("latitudeInput").value = lat;
+          document.getElementById("longitudeInput").value = lng;
+        });
+      }
+
+      // Try geolocation first
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            renderMap({
+              lat: position.coords.latitude,
+              lng: position.coords.longitude
+            });
+          },
+          () => {
+            // If denied or failed, fallback
+            renderMap(hasLocation ? { lat, lng } : defaultLocation);
+          }
+        );
+      } else {
+        renderMap(hasLocation ? { lat, lng } : defaultLocation);
+      }
+    }
+    window.initMap = initMap;
+
+    // Handle form submission
+    document.addEventListener('DOMContentLoaded', function () {
+      datafetch(); // Fetch camera data when the page loads
+       // Initialize WebSocket connection if needed
+      document.getElementById('addCameraForm').addEventListener('submit', function (e) {
+        e.preventDefault();
+        // Collect form data
+        const address = document.getElementById('addressInput').value;
+        const latitude = document.getElementById('latitudeInput').value;
+        const longitude = document.getElementById('longitudeInput').value;
+        // TODO: Send data to server via fetch or AJAX
+        alert(`Camera Added!\nAddress: ${address}\nLatitude: ${latitude}\nLongitude: ${longitude}`);
+      });
+    });
+
+    // WebSocket logic
+    let ws = null; // Keep reference to the WebSocket
+
+    async function websocket(mac) {
+      if (!mac) {
+        console.error('MAC address is missing for WebSocket connection');
+        return;
+      }
+
+      // Close previous WebSocket if open
+      if (ws) {
+        ws.close();
+      }
+
+      const wsProtocol = location.protocol === 'https:' ? 'wss' : 'ws';
+      const wsUrl = `${wsProtocol}://${location.host}/cameraaccess/cameraconnect/${mac}`;
+      console.log("WebSocket URL:", wsUrl);
+
+      try {
+        ws = new WebSocket(wsUrl);
+      } catch (e) {
+        console.error('WebSocket connection failed:', e);
+        return;
+      }
+
+      ws.onopen = function () {
+        console.log('WebSocket connection established');
+      };
+
+      ws.onmessage = function (event) {
+        // Assume the server sends base64-encoded JPEG image data
+        if (event.data && typeof event.data === "string") {
+          document.getElementById('cameraImage').src = `data:image/jpeg;base64,${event.data}`;
+        }
+      };
+
+      ws.onerror = function (error) {
+        console.error('WebSocket error:', error);
+      };
+
+      ws.onclose = function () {
+        console.log('WebSocket connection closed');
+      };
+    }
+
+    function cameraAddFunc() {
+      const address = document.getElementById('addressInput').value;
+      const latitude = document.getElementById('latitudeInput').value;
+      const longitude = document.getElementById('longitudeInput').value;
+
+      if (!address || !latitude || !longitude) {
+        alert('Please fill in all fields');
+        return;
+      }
+
+      // Send data to the server
+      fetch('/cameraaccess/addcamera', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          uid: uid,
+          address: address,
+          latitude: latitude,
+          longitude: longitude
+        })
+      })
+        .then(response => {
+          if (response.status === 201) {
+            alert('Camera added successfully');
+            // Optionally, you can refresh the page or update the UI
+            window.location.href = "/dashboard/";
+          } else if (response.status === 400) {
+            alert('Already existing camera with this address');
+          } else if (response.status === 404) {
+            alert('Camera not found');
+          } else {
+            throw new Error('Failed to add camera');
+          }
+        })
+        .catch(error => {
+          console.error('Error:', error);
+          alert('Error adding camera');
+        });
+    }
+
+  </script>
+  <script async defer
+    src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBExqXeRx2Lxltl4GPli1e_8tg2oNLt6t0&callback=initMap&v=weekly&libraries=marker"></script>
+</body>
+
+<script>
+
+  
+</script>
+<script>
+  function logouthandler() {
+    // Logic to handle logout
+    uri = '/logout'; // Redirect to logout endpoint
+    fetch(uri, {
+      method: 'POST',
+      credentials: 'include', // Include cookies for session management
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    }).then(response => {
+      if (response.status === 200) {
+        alert('Logout successful');
+        window.location.href = '/'; // Redirect to login page on successful logout
+      }
+    });
+  }
+</script>
+
+</html>
